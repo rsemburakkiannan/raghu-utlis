@@ -28,21 +28,35 @@ public class DynamoDBLocalSample {
 
         // Define table name and schema
         String tableName = "TestTable";
-        CreateTableRequest createTableRequest = new CreateTableRequest()
-                .withTableName(tableName)
-                .withKeySchema(new KeySchemaElement().withAttributeName("id").withKeyType(KeyType.HASH))
-                .withAttributeDefinitions(new AttributeDefinition().withAttributeName("id").withAttributeType(ScalarAttributeType.S))
-                .withProvisionedThroughput(new ProvisionedThroughput(5L, 5L));
 
-        // Create the table
-        Table table = dynamoDB.createTable(createTableRequest);
+        // Check if the table exists
+        boolean tableExists = false;
         try {
-            table.waitForActive();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            DescribeTableRequest describeTableRequest = new DescribeTableRequest().withTableName(tableName);
+            client.describeTable(describeTableRequest);
+            tableExists = true;
+        } catch (ResourceNotFoundException e) {
+            // Table does not exist
+        }
+
+        if (!tableExists) {
+            // Table doesn't exist, create it
+            CreateTableRequest createTableRequest = new CreateTableRequest()
+                    .withTableName(tableName)
+                    .withKeySchema(new KeySchemaElement().withAttributeName("id").withKeyType(KeyType.HASH))
+                    .withAttributeDefinitions(new AttributeDefinition().withAttributeName("id").withAttributeType(ScalarAttributeType.S))
+                    .withProvisionedThroughput(new ProvisionedThroughput(5L, 5L));
+
+            Table table = dynamoDB.createTable(createTableRequest);
+            try {
+                table.waitForActive();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
         // Put an item into the table
+        Table table = dynamoDB.getTable(tableName);
         PutItemSpec putItemSpec = new PutItemSpec()
                 .withItem(new Item().withString("id", "1").withString("name", "John Doe").withNumber("age", 30));
         table.putItem(putItemSpec);
@@ -53,3 +67,4 @@ public class DynamoDBLocalSample {
         System.out.println("Item retrieved: " + item.toJSON());
     }
 }
+
